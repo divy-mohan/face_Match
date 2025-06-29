@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Register Employee{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Register New Employee</h4>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                <form method="post" enctype="multipart/form-data" id="register-form">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="employee_number" class="form-label">Employee Number</label>
+                        <input type="text" class="form-control" id="employee_number" name="employee_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="job_title" class="form-label">Job Title</label>
+                        <select class="form-select" id="job_title" name="job_title" required>
+                            <option value="">Select Job Title</option>
+                            {% for jt in job_titles %}
+                                <option value="{{ jt.id }}">{{ jt.name }} ({{ jt.category.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact_number" class="form-label">Contact Number</label>
+                        <input type="text" class="form-control" id="contact_number" name="contact_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email (optional)</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Face Photo (upload or capture)</label>
+                        <input type="file" class="form-control mb-2" id="image" name="image" accept="image/*">
+                        <div>
+                            <video id="video" width="320" height="240" autoplay style="display:none;"></video>
+                            <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+                            <button type="button" class="btn btn-secondary btn-sm" id="start-camera">Capture Live</button>
+                            <button type="button" class="btn btn-success btn-sm" id="take-photo" style="display:none;">Click To Save Capture</button>
+                        </div>
+                        <input type="hidden" name="captured_image" id="captured_image">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Register Employee</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+const startCameraBtn = document.getElementById('start-camera');
+const takePhotoBtn = document.getElementById('take-photo');
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const capturedImageInput = document.getElementById('captured_image');
+
+startCameraBtn.onclick = function() {
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        video.style.display = 'block';
+        takePhotoBtn.style.display = 'inline-block';
+        video.srcObject = stream;
+    });
+};
+
+takePhotoBtn.onclick = function() {
+    canvas.style.display = 'block';
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Stop the camera
+    video.srcObject.getTracks().forEach(track => track.stop());
+    // Convert to data URL and set hidden input
+    capturedImageInput.value = canvas.toDataURL('image/png');
+    video.style.display = 'none';
+    takePhotoBtn.style.display = 'none';
+};
+</script>
+{% endblock %}

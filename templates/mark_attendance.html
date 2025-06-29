@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Mark Attendance{% endblock %}
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js">
+    document.getElementById('attendance-form').addEventListener('submit', function(e) {
+    if (!capturedImageInput.value) {
+        e.preventDefault();
+        alert('Please take a photo before submitting.');
+    } else {
+        // Debug: Show the first 100 chars of the image string
+        console.log('Captured image value:', capturedImageInput.value.substring(0, 100));
+    }
+});
+  </script>
+  
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Mark Attendance</h4>
+            </div>
+            <div class="card-body">
+                {% if success %}
+                    <div class="alert alert-success">{{ success }}</div>
+                {% endif %}
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                <form method="post" enctype="multipart/form-data" id="attendance-form">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="employee_id" class="form-label">Select Employee</label>
+                        <select class="form-select" id="employee_id" name="employee_id" required>
+                            <option value="">Select Employee</option>
+                            {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.employee_number }} - {{ emp.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Face Capture (Live Only)</label>
+                        <div>
+                            <video id="video" width="320" height="240" autoplay style="display:none; border:1px solid #ccc;"></video>
+                            <canvas id="canvas" width="320" height="240" style="display:none; border:1px solid #ccc;"></canvas>
+                            <button type="button" class="btn btn-secondary btn-sm mt-2" id="start-camera">Start Camera</button>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="take-photo" style="display:none;">Take Photo</button>
+                        </div>
+                        <input type="hidden" name="captured_image" id="captured_image" required>
+                        <div id="detected-name-box" class="alert alert-info mt-2" style="display:none;"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Attendance Status</label>
+                        <div>
+                            <label>
+                                <input type="radio" name="status" value="coming" checked> Coming
+                            </label>
+                            <label>
+                                <input type="radio" name="status" value="going"> Going
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">Mark Attendance</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startCameraBtn = document.getElementById('start-camera');
+    const takePhotoBtn = document.getElementById('take-photo');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const capturedImageInput = document.getElementById('captured_image');
+
+    let stream = null;
+
+    startCameraBtn.onclick = async function() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.style.display = 'block';
+            takePhotoBtn.style.display = 'inline-block';
+            video.srcObject = stream;
+        } catch (err) {
+            alert('Camera error: ' + err.name + ' - ' + err.message);
+            console.error(err);
+        }
+    };
+
+    takePhotoBtn.onclick = function() {
+        canvas.style.display = 'block';
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        capturedImageInput.value = canvas.toDataURL('image/png');
+        video.style.display = 'none';
+        takePhotoBtn.style.display = 'none';
+    };
+
+    // Prevent submit if no photo
+    document.getElementById('attendance-form').addEventListener('submit', function(e) {
+        if (!capturedImageInput.value) {
+            e.preventDefault();
+            alert('Please take a photo before submitting.');
+        }
+    });
+});
+</script>
+{% endblock %}
