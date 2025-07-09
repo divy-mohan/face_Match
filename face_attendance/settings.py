@@ -137,6 +137,9 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+CSRF_TRUSTED_ORIGINS = [
+    'https://web-production-e3e5b.up.railway.app',
+]
 
 
 # Static files (CSS, JavaScript, Images)
