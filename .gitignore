@@ -1,2 +1,13 @@
-.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.env
+*.venv
+.venv/
+venv/
 venv310/
+.env
+node_modules/
