@@ -26,8 +26,11 @@
                 <div class="card-body">
                     {% if success %}
                         <div class="alert alert-success d-flex align-items-center">
-                            <i class="fas fa-check-circle me-2"></i>
-                            {{ success }}
+                            <div class="success-tick"></div>
+                            <div class="ms-3">
+                                <strong>Success!</strong><br>
+                                {{ success }}
+                            </div>
                         </div>
                     {% endif %}
                     {% if error %}

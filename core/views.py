@@ -4,6 +4,7 @@ import cv2
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse, JsonResponse
+from django.db import IntegrityError
 from .models import Supervisor, Employee, Attendance
 from .serializers import EmployeeSerializer, AttendanceSerializer
 from rest_framework.decorators import api_view
@@ -17,6 +18,7 @@ from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from PIL import Image
 from django.core.files.base import ContentFile
+from django.db import IntegrityError
 import os
 
 # --- Utility Functions ---
@@ -35,10 +37,12 @@ def compress_image(image_file, max_size_kb=200):
     buffer.seek(0)
     return buffer
 
-def is_blurry(image_file, threshold=100):
+def is_blurry(image_file, threshold=50):
     file_bytes = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
     image_file.seek(0)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if img is None:
+        return True  # Invalid image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     fm = cv2.Laplacian(gray, cv2.CV_64F).var()
     return fm < threshold
@@ -293,14 +297,20 @@ def mark_attendance(request):
                     # Compress and save attendance image
                     compressed_buffer = compress_image(BytesIO(img_bytes), max_size_kb=200)
                     attendance_image = ContentFile(compressed_buffer.read(), name=f"{emp.employee_number}_{today}_{status}.jpg")
-                    Attendance.objects.create(
-                        employee=emp,
-                        latitude=latitude,
-                        longitude=longitude,
-                        marked_by=supervisor,
-                        status=status,
-                        image=attendance_image
-                    )
+                    try:
+                        Attendance.objects.create(
+                            employee=emp,
+                            latitude=latitude,
+                            longitude=longitude,
+                            marked_by=supervisor,
+                            status=status,
+                            image=attendance_image
+                        )
+                    except IntegrityError:
+                        return render(request, 'mark_attendance.html', {
+                            'employees': employees,
+                            'error': f'Attendance already marked for {emp.name} ({status}) today.'
+                        })
                     # No need to delete temp file as we use in-memory objects
                     return render(request, 'mark_attendance.html', {
                         'employees': employees,
