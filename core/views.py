@@ -289,7 +289,7 @@ def mark_attendance(request):
                     if (now_dt - last_dt) < timedelta(minutes=1):
                         return render(request, 'mark_attendance.html', {
                             'employees': employees,
-                            'error': f'Attendance already marked for {emp.name} ({status}) within the last 1 minute.'
+                            'error': f'Please wait {60 - (now_dt - last_dt).seconds} seconds before marking attendance again.'
                         })
                 # --- end 1 minute gap logic ---
                 img_file.seek(0)
