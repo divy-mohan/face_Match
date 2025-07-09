@@ -75,6 +75,12 @@ def can_mark_attendance(user):
 def is_supervisor(user):
     return hasattr(user, 'supervisor')
 
+def has_category_permission(supervisor, job_title):
+    """Check if supervisor has permission for the job title's category"""
+    if not job_title or not job_title.category:
+        return False
+    return supervisor.assigned_categories.filter(id=job_title.category.id).exists()
+
 # --- API Views ---
 
 @api_view(['GET'])
@@ -121,7 +127,18 @@ def supervisor_dashboard(request):
     if request.user.is_superuser:
         return redirect('/admin/')
     supervisor = request.user.supervisor
-    employees = Employee.objects.filter(supervisor=supervisor)
+    # Filter employees by supervisor's assigned categories
+    assigned_categories = supervisor.assigned_categories.all()
+    if not assigned_categories.exists():
+        return render(request, 'supervisor_dashboard.html', {
+            'employees': Employee.objects.none(),
+            'attendance_records': Attendance.objects.none(),
+            'no_categories': True,
+        })
+    employees = Employee.objects.filter(
+        supervisor=supervisor,
+        job_title__category__in=assigned_categories
+    )
     attendance_records = Attendance.objects.filter(employee__in=employees).order_by('-date', '-time')[:20]
     return render(request, 'supervisor_dashboard.html', {
         'employees': employees,
@@ -134,6 +151,14 @@ def supervisor_dashboard(request):
 @user_passes_test(is_supervisor)
 def register_employee(request):
     supervisor = request.user.supervisor
+    assigned_categories = supervisor.assigned_categories.all()
+    
+    if not assigned_categories.exists():
+        return render(request, 'register_employee.html', {
+            'error': 'You have no assigned categories. Please contact the administrator.',
+            'job_titles': []
+        })
+    
     if request.method == 'POST':
         employee_number = request.POST.get('employee_number')
         name = request.POST.get('name')
@@ -154,9 +179,12 @@ def register_employee(request):
         if job_title_id:
             from .models import JobTitle
             try:
-                job_title = JobTitle.objects.get(id=job_title_id)
+                job_title = JobTitle.objects.get(id=job_title_id, category__in=assigned_categories)
             except JobTitle.DoesNotExist:
-                job_title = None
+                return render(request, 'register_employee.html', {
+                    'error': 'You are not authorized to assign this job title.',
+                    'job_titles': JobTitle.objects.filter(category__in=assigned_categories)
+                })
         if image_file:
             if is_blurry(image_file):
                 return render(request, 'register_employee.html', {'error': 'Image is too blurry. Please upload a clearer photo.'})
@@ -186,7 +214,7 @@ def register_employee(request):
             else:
                 return render(request, 'register_employee.html', {'error': 'No face detected.'})
     from .models import JobTitle
-    job_titles = JobTitle.objects.all()
+    job_titles = JobTitle.objects.filter(category__in=assigned_categories)
     return render(request, 'register_employee.html', {'job_titles': job_titles})
 
 # --- Attendance Marking (by Supervisor) ---
@@ -199,7 +227,16 @@ def mark_attendance(request):
         supervisor = None
     else:
         supervisor = request.user.supervisor
-        employees = Employee.objects.filter(supervisor=supervisor)
+        assigned_categories = supervisor.assigned_categories.all()
+        if not assigned_categories.exists():
+            return render(request, 'mark_attendance.html', {
+                'employees': Employee.objects.none(),
+                'error': 'You have no assigned categories. Please contact the administrator.'
+            })
+        employees = Employee.objects.filter(
+            supervisor=supervisor,
+            job_title__category__in=assigned_categories
+        )
     if request.method == 'POST':
         employee_id = request.POST.get('employee_id')
         captured_image_data = request.POST.get('captured_image')
@@ -213,13 +250,18 @@ def mark_attendance(request):
         longitude = None
         try:
             if supervisor:
-                emp = Employee.objects.get(id=employee_id, supervisor=supervisor)
+                assigned_categories = supervisor.assigned_categories.all()
+                emp = Employee.objects.get(
+                    id=employee_id, 
+                    supervisor=supervisor,
+                    job_title__category__in=assigned_categories
+                )
             else:
                 emp = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
             return render(request, 'mark_attendance.html', {
                 'employees': employees,
-                'error': 'Employee not found.'
+                'error': 'Employee not found or you are not authorized to mark attendance for this employee.'
             })
         # Convert base64 image to file-like object
         format, imgstr = captured_image_data.split(';base64,')

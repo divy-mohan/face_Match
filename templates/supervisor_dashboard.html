@@ -1,79 +1,178 @@
 {% extends "base.html" %}
 {% block title %}Supervisor Dashboard{% endblock %}
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">Supervisor Dashboard</h2>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">My Employees</h5>
+<div class="container-fluid fade-in">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-primary mb-0">
+                        <i class="fas fa-tachometer-alt me-3"></i>Dashboard
+                    </h1>
+                    <p class="text-muted mb-0">Manage your team's attendance efficiently</p>
                 </div>
-                <div class="card-body p-0">
-                    <table class="table table-striped mb-0">
-                        <thead>
-                            <tr>
-                                <th>Emp No.</th>
-                                <th>Name</th>
-                                <th>Job Title</th>
-                                <th>Contact</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for emp in employees %}
-                            <tr>
-                                <td>{{ emp.employee_number }}</td>
-                                <td>{{ emp.name }}</td>
-                                <td>{{ emp.job_title.name }}</td>
-                                <td>{{ emp.contact_number }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center">No employees found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="d-none d-md-block">
+                    <div class="text-end">
+                        <small class="text-muted">Today's Date</small>
+                        <div class="fw-bold">{{ "now"|date:"F d, Y" }}</div>
+                    </div>
                 </div>
             </div>
-            <a href="{% url 'register_employee' %}" class="btn btn-primary w-100 mb-2">Register New Employee</a>
-            <a href="{% url 'mark_attendance' %}" class="btn btn-success w-100">Mark Attendance</a>
         </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Recent Attendance</h5>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card slide-up">
+                <div class="card-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <a href="{% url 'register_employee' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Register Employee
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{% url 'mark_attendance' %}" class="btn btn-success w-100">
+                                <i class="fas fa-clock me-2"></i>Mark Attendance
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-info w-100" onclick="refreshData()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Employees Section -->
+        <div class="col-lg-7 mb-4">
+            <div class="card h-100 slide-up">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>Team Members
+                        </h5>
+                        <span class="badge bg-light text-primary">{{ employees|length }} Total</span>
+                    </div>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-striped mb-0">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Employee</th>
-                                <th>Latitude</th>
-                                <th>Longitude</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for att in attendance_records %}
-                            <tr>
-                                <td>{{ att.date }}</td>
-                                <td>{{ att.time|time:"H:i:s" }}</td>
-                                <td>{{ att.employee.name }}</td>
-                                <td>{{ att.latitude|default:"-" }}</td>
-                                <td>{{ att.longitude|default:"-" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">No attendance records found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    {% if no_categories %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                            <h5 class="text-warning">No Categories Assigned</h5>
+                            <p class="text-muted">You have no assigned job categories. Please contact the administrator to assign categories to your account.</p>
+                        </div>
+                    {% elif employees %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-id-badge me-1"></i>ID</th>
+                                        <th><i class="fas fa-user me-1"></i>Name</th>
+                                        <th class="d-none d-md-table-cell"><i class="fas fa-briefcase me-1"></i>Role</th>
+                                        <th class="d-none d-lg-table-cell"><i class="fas fa-phone me-1"></i>Contact</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for emp in employees %}
+                                    <tr>
+                                        <td class="fw-bold text-primary">{{ emp.employee_number }}</td>
+                                        <td>{{ emp.name }}</td>
+                                        <td class="d-none d-md-table-cell">
+                                            <span class="badge bg-light text-dark">{{ emp.job_title.name }}</span>
+                                        </td>
+                                        <td class="d-none d-lg-table-cell">{{ emp.contact_number }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No employees registered yet</h5>
+                            <p class="text-muted">Start by registering your first team member</p>
+                            <a href="{% url 'register_employee' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add Employee
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Section -->
+        <div class="col-lg-5 mb-4">
+            <div class="card h-100 slide-up">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>Recent Activity
+                        </h5>
+                        <span class="badge bg-light text-info">{{ attendance_records|length }} Records</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if attendance_records %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-calendar me-1"></i>Date</th>
+                                        <th><i class="fas fa-clock me-1"></i>Time</th>
+                                        <th><i class="fas fa-user me-1"></i>Employee</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for att in attendance_records %}
+                                    <tr>
+                                        <td class="fw-bold">{{ att.date|date:"M d" }}</td>
+                                        <td>
+                                            <span class="badge bg-success">{{ att.time|time:"H:i" }}</span>
+                                        </td>
+                                        <td>{{ att.employee.name|truncatechars:15 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No attendance records</h5>
+                            <p class="text-muted">Attendance data will appear here</p>
+                            <a href="{% url 'mark_attendance' %}" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>Mark First Attendance
+                            </a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function refreshData() {
+    location.reload();
+}
+
+// Add fade-in animation to cards
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.slide-up');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
 {% endblock %}

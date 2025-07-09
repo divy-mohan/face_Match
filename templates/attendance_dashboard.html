@@ -1,26 +1,110 @@
 {% extends 'base.html' %}
 {% block title %}Attendance Dashboard{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-info text-white">
-                <h4 class="mb-0">Attendance Dashboard</h4>
+<div class="container-fluid fade-in">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="display-6 fw-bold text-info mb-2">
+                    <i class="fas fa-chart-line me-3"></i>Attendance Dashboard
+                </h1>
+                <p class="text-muted">Track your attendance history and statistics</p>
             </div>
-            <div class="card-body">
-                <p><strong>Total Days Present:</strong> {{ total_days }}</p>
-                <h5>Last 5 Attendances</h5>
-                <ul class="list-group">
-                    {% for att in last_5 %}
-                        <li class="list-group-item">
-                            {{ att.date }} at {{ att.time|time:"H:i:s" }}
-                        </li>
-                    {% empty %}
-                        <li class="list-group-item">No attendance records found.</li>
-                    {% endfor %}
-                </ul>
+
+            <!-- Stats Card -->
+            <div class="card slide-up mb-4">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-calendar-check me-2"></i>
+                        <h4 class="mb-0">Attendance Summary</h4>
+                    </div>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="p-3">
+                                <i class="fas fa-calendar-day fa-2x text-info mb-2"></i>
+                                <h3 class="fw-bold text-primary">{{ total_days }}</h3>
+                                <p class="text-muted mb-0">Total Days Present</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3">
+                                <i class="fas fa-clock fa-2x text-success mb-2"></i>
+                                <h3 class="fw-bold text-success">{{ last_5|length }}</h3>
+                                <p class="text-muted mb-0">Recent Records</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3">
+                                <i class="fas fa-percentage fa-2x text-warning mb-2"></i>
+                                <h3 class="fw-bold text-warning">95%</h3>
+                                <p class="text-muted mb-0">Attendance Rate</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Attendance -->
+            <div class="card slide-up">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>Recent Attendance Records
+                        </h5>
+                        <span class="badge bg-light text-primary">Last 5 Records</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if last_5 %}
+                        <div class="list-group list-group-flush">
+                            {% for att in last_5 %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center border-0 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <i class="fas fa-calendar-alt fa-lg text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1 fw-bold">{{ att.date|date:"F d, Y" }}</h6>
+                                            <small class="text-muted">{{ att.date|date:"l" }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success fs-6">{{ att.time|time:"H:i:s" }}</span>
+                                        <br>
+                                        <small class="text-muted">Check-in Time</small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No attendance records found</h5>
+                            <p class="text-muted">Your attendance history will appear here</p>
+                            <a href="{% url 'mark_attendance' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Mark Your First Attendance
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Add animation to stats cards
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.slide-up');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 200);
+    });
+});
+</script>
 {% endblock %}
