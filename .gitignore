@@ -11,3 +11,4 @@ venv/
 venv310/
 .env
 node_modules/
+/core/migrations/__pycache__

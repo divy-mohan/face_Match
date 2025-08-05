@@ -314,7 +314,7 @@ def mark_attendance(request):
                     # No need to delete temp file as we use in-memory objects
                     return render(request, 'mark_attendance.html', {
                         'employees': employees,
-                        'success': f'Attendance marked for {emp.name} ({status}, blink detected).'
+                        'success': f'Attendance marked for {emp.name} ({status}, blink detected) at {datetime.now().strftime("%I:%M %p")} IST.'
                     })
                 else:
                     return render(request, 'mark_attendance.html', {

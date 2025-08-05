@@ -7,7 +7,7 @@
 {% block content %}
 <div class="container-fluid fade-in">
     <div class="row justify-content-center">
-        <div class="col-lg-8 col-xl-6">
+        <div class="col-12 col-sm-11 col-md-10 col-lg-8 col-xl-6">
             <!-- Header -->
             <div class="text-center mb-4">
                 <h1 class="display-6 fw-bold text-success mb-2">
@@ -61,24 +61,44 @@
                             <label class="form-label">
                                 <i class="fas fa-camera me-2"></i>Face Capture
                             </label>
-                            <div class="camera-container text-center p-4 border rounded-3 bg-light">
-                                <video id="video" width="320" height="240" autoplay style="display:none;"></video>
-                                <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+                            
+                            <!-- Camera Selection -->
+                            <div class="mb-3">
+                                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="front-camera">
+                                        <i class="fas fa-user me-1"></i>Front Camera
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="back-camera">
+                                        <i class="fas fa-camera me-1"></i>Back Camera
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="camera-container text-center p-3 border rounded-3 bg-light">
+                                <div class="video-wrapper position-relative d-inline-block">
+                                    <video id="video" class="img-fluid rounded" autoplay playsinline style="display:none; max-width:100%; height:auto;"></video>
+                                    <canvas id="canvas" class="img-fluid rounded" style="display:none; max-width:100%; height:auto;"></canvas>
+                                </div>
                                 
-                                <div id="camera-placeholder" class="py-5">
-                                    <i class="fas fa-camera fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted mb-3">Click to start camera and capture your face</p>
-                                    <button type="button" class="btn btn-secondary" id="start-camera">
+                                <div id="camera-placeholder" class="py-4">
+                                    <i class="fas fa-camera fa-2x text-muted mb-3 d-block"></i>
+                                    <p class="text-muted mb-3 small">Select camera type and click start to capture your face</p>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="start-camera">
                                         <i class="fas fa-video me-2"></i>Start Camera
                                     </button>
                                 </div>
                                 
-                                <button type="button" class="btn btn-success mt-3" id="take-photo" style="display:none;">
-                                    <i class="fas fa-camera me-2"></i>Capture Photo
-                                </button>
-                                <button type="button" class="btn btn-warning mt-3" id="retake-photo" style="display:none;">
-                                    <i class="fas fa-redo me-2"></i>Retake
-                                </button>
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-success btn-sm me-2" id="take-photo" style="display:none;">
+                                        <i class="fas fa-camera me-1"></i>Capture
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-sm" id="retake-photo" style="display:none;">
+                                        <i class="fas fa-redo me-1"></i>Retake
+                                    </button>
+                                    <button type="button" class="btn btn-info btn-sm" id="switch-camera" style="display:none;">
+                                        <i class="fas fa-sync-alt me-1"></i>Switch
+                                    </button>
+                                </div>
                             </div>
                             <input type="hidden" name="captured_image" id="captured_image" required>
                             <div id="detected-name-box" class="alert alert-info mt-3" style="display:none;">
@@ -92,7 +112,7 @@
                             <label class="form-label">
                                 <i class="fas fa-toggle-on me-2"></i>Attendance Status
                             </label>
-                            <div class="d-flex gap-4">
+                            <div class="d-flex flex-column flex-sm-row gap-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="status" value="coming" id="coming" checked>
                                     <label class="form-check-label fw-bold text-success" for="coming">
@@ -124,6 +144,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const startCameraBtn = document.getElementById('start-camera');
     const takePhotoBtn = document.getElementById('take-photo');
     const retakePhotoBtn = document.getElementById('retake-photo');
+    const switchCameraBtn = document.getElementById('switch-camera');
+    const frontCameraBtn = document.getElementById('front-camera');
+    const backCameraBtn = document.getElementById('back-camera');
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const capturedImageInput = document.getElementById('captured_image');
@@ -132,25 +155,77 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingSpinner = document.getElementById('loading-spinner');
 
     let stream = null;
+    let currentFacingMode = 'user'; // 'user' for front, 'environment' for back
+    let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Start camera function
-    startCameraBtn.onclick = async function() {
+    // Camera selection
+    frontCameraBtn.onclick = function() {
+        currentFacingMode = 'user';
+        frontCameraBtn.classList.add('active');
+        backCameraBtn.classList.remove('active');
+        if (stream) {
+            stopCamera();
+            startCamera();
+        }
+    };
+
+    backCameraBtn.onclick = function() {
+        currentFacingMode = 'environment';
+        backCameraBtn.classList.add('active');
+        frontCameraBtn.classList.remove('active');
+        if (stream) {
+            stopCamera();
+            startCamera();
+        }
+    };
+
+    // Set default camera (back camera for mobile)
+    if (isMobile) {
+        currentFacingMode = 'environment';
+        backCameraBtn.classList.add('active');
+    } else {
+        frontCameraBtn.classList.add('active');
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+    }
+
+    async function startCamera() {
         try {
             startCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
             startCameraBtn.disabled = true;
             
-            stream = await navigator.mediaDevices.getUserMedia({ 
+            const constraints = { 
                 video: { 
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: 'user'
+                    width: { ideal: isMobile ? 480 : 640 },
+                    height: { ideal: isMobile ? 640 : 480 },
+                    facingMode: currentFacingMode
                 } 
-            });
+            };
+            
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
             
             cameraPlaceholder.style.display = 'none';
             video.style.display = 'block';
             takePhotoBtn.style.display = 'inline-block';
+            switchCameraBtn.style.display = 'inline-block';
             video.srcObject = stream;
+            
+            // Auto-resize video for mobile
+            video.onloadedmetadata = function() {
+                if (isMobile) {
+                    const container = document.querySelector('.camera-container');
+                    const maxWidth = container.offsetWidth - 40;
+                    if (video.videoWidth > maxWidth) {
+                        video.style.width = maxWidth + 'px';
+                        video.style.height = 'auto';
+                    }
+                }
+            };
             
         } catch (err) {
             startCameraBtn.innerHTML = '<i class="fas fa-video me-2"></i>Start Camera';
@@ -158,37 +233,77 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Camera access denied or not available: ' + err.message);
             console.error('Camera error:', err);
         }
+    }
+
+    // Start camera function
+    startCameraBtn.onclick = startCamera;
+
+    // Switch camera function
+    switchCameraBtn.onclick = function() {
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+        if (currentFacingMode === 'user') {
+            frontCameraBtn.classList.add('active');
+            backCameraBtn.classList.remove('active');
+        } else {
+            backCameraBtn.classList.add('active');
+            frontCameraBtn.classList.remove('active');
+        }
+        stopCamera();
+        startCamera();
     };
 
     // Take photo function
     takePhotoBtn.onclick = function() {
         const context = canvas.getContext('2d');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0);
+        
+        // Set canvas size based on video dimensions
+        const videoWidth = video.videoWidth || video.offsetWidth;
+        const videoHeight = video.videoHeight || video.offsetHeight;
+        
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+        
+        // Draw image on canvas
+        context.drawImage(video, 0, 0, videoWidth, videoHeight);
         
         // Stop camera
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
-        }
+        stopCamera();
         
         // Show captured image
         video.style.display = 'none';
         canvas.style.display = 'block';
         takePhotoBtn.style.display = 'none';
+        switchCameraBtn.style.display = 'none';
         retakePhotoBtn.style.display = 'inline-block';
         
-        // Store image data
+        // Resize canvas for mobile display
+        if (isMobile) {
+            const container = document.querySelector('.camera-container');
+            const maxWidth = container.offsetWidth - 40;
+            if (canvas.width > maxWidth) {
+                canvas.style.width = maxWidth + 'px';
+                canvas.style.height = 'auto';
+            }
+        }
+        
+        // Store image data with current timestamp
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-IN', { 
+            timeZone: 'Asia/Kolkata',
+            hour12: true,
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
         capturedImageInput.value = canvas.toDataURL('image/jpeg', 0.8);
         
         // Enable submit button
         submitBtn.disabled = false;
         
-        // Show success message
+        // Show success message with timestamp
         const detectedBox = document.getElementById('detected-name-box');
         detectedBox.style.display = 'block';
-        document.getElementById('detected-name').textContent = 'Photo captured successfully!';
+        document.getElementById('detected-name').textContent = `Photo captured successfully at ${timeString} IST!`;
     };
 
     // Retake photo function
@@ -201,6 +316,10 @@ document.addEventListener('DOMContentLoaded', function() {
         capturedImageInput.value = '';
         submitBtn.disabled = true;
         document.getElementById('detected-name-box').style.display = 'none';
+        
+        // Reset canvas size
+        canvas.style.width = '';
+        canvas.style.height = '';
     };
 
     // Form submission
@@ -215,12 +334,34 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         loadingSpinner.style.display = 'inline-block';
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        
+        // Stop any remaining camera stream
+        stopCamera();
     });
 
     // Employee selection change
     document.getElementById('employee_id').addEventListener('change', function() {
         if (this.value && capturedImageInput.value) {
             submitBtn.disabled = false;
+        }
+    });
+    
+    // Handle page visibility change to stop camera when page is hidden
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopCamera();
+        }
+    });
+    
+    // Handle window resize for mobile responsiveness
+    window.addEventListener('resize', function() {
+        if (video.style.display === 'block' && isMobile) {
+            const container = document.querySelector('.camera-container');
+            const maxWidth = container.offsetWidth - 40;
+            if (video.videoWidth > maxWidth) {
+                video.style.width = maxWidth + 'px';
+                video.style.height = 'auto';
+            }
         }
     });
 });
